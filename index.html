@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anagramizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.4.4/fuse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="./datasets/zp.js"></script>
+
+</head>
+<body>
+<div id="app">
+
+    <div class="container">
+
+
+        <div class="row">
+            <!--search algorithm selection-->
+            <label>
+                <input type="radio" id="fuzzy" value="fuzzy" v-model="algorithm">
+                <span>Fuzzy search</span>
+            </label>
+            <label>
+                <input type="radio" id="anagram" value="anagram" v-model="algorithm">
+                <span>Анаграммайзер(coming soon)</span>
+            </label>
+            <!--end search algorithm selection-->
+            <h1>{{message}}</h1>
+
+            <input class="col s12" value="" v-model="input" @input="search">
+
+
+            <button class="btn waves-effect waves-light col s12" @click="search">Search</button>
+
+            <table v-if="results && results.length>0">
+                <thead>
+                <tr>
+                    <th>RU</th>
+                    <th>UA</th>
+                    <th>District</th>
+                    <th>Old name</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr v-for="street in results">
+                    <td :title='street.score'><a :href='"https://maps.google.com/?q=Запорожье, "+street.ru'
+                                                 target="_blank">{{street.ru}}</a></td>
+                    <td>{{street.ua}}</td>
+                    <td>{{street.district}}</td>
+                    <td>{{street.old}}</td>
+                </tr>
+                </tbody>
+            </table>
+            <h1 v-else-if="results !== null">Нет совпадений :(</h1>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+  function transliterate(text, engToRus = false) {
+    var
+      rus = "щ   ш  ч  ц  ю  я  ё  ж  ъ  ы  э  а б в г д е з и й к л м н о п р с т у ф х ь".split(/ +/g),
+      eng = "shh sh ch cz yu ya yo zh `` y' e` a b v g d e z i j k l m n o p r s t u f x `".split(/ +/g);
+    var x;
+    for (x = 0; x < rus.length; x++) {
+      text = text.split(engToRus ? eng[x] : rus[x]).join(engToRus ? rus[x] : eng[x]);
+      text = text.split(engToRus ? eng[x].toUpperCase() : rus[x].toUpperCase()).join(engToRus ? rus[x].toUpperCase() : eng[x].toUpperCase());
+    }
+    return text;
+  };
+
+  var app = new Vue({
+    el: '#app',
+    data: {
+      message: 'Введите буквы для поиска',
+      algorithm: 'fuzzy',
+      input: '',
+      streets: streets,
+      results: null,
+    },
+    methods: {
+      search: function () {
+        if (this.algorithm == 'fuzzy') {
+          var options = {
+            shouldSort: true,
+            tokenize: true,
+            findAllMatches: true,
+            includeScore: true,
+            threshold: 0.4,
+            location: 5,
+            distance: 1000,
+            maxPatternLength: 32,
+            minMatchCharLength: 1,
+            keys: [
+              "ru"
+            ]
+          };
+          var fuse = new Fuse(streets, options); // "list" is the item array
+          var results = fuse.search(transliterate(this.input, true));
+          this.message = `Найдено - ${results.length}`
+          this.results = results.map((res) => {
+            res.item.score = res.score;
+            return res.item
+          });
+        } else {
+          //TODO
+          this.results = [];
+        }
+
+      },
+
+    }
+  })
+</script>
+</body>
+</html>
