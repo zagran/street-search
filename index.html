@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Anagramizer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link rel="stylesheet" href="./style.css">
@@ -9,53 +10,87 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.4.4/fuse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <script src="./datasets/zp.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-137018871-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-137018871-1');
+    </script>
 
 </head>
 <body>
 <div id="app">
+    <nav>
+        <div class="nav-wrapper grey darken-3">
+            <div class="container">
+
+
+                <div class="row">
+                    <a href="#" class="brand-logo">ZP.Streets</a>
+                    <ul id="nav-mobile" class="right hide-on-med-and-down">
+                        <li>
+                            <label>
+                                <input class="white-text" type="radio" id="anagram" value="anagram" v-model="algorithm"
+                                       @change="clearSearch">
+                                <span class="white-text">Anagram</span>
+                            </label>
+                            <label>
+                                <input type="radio" id="fuzzy" value="fuzzy" v-model="algorithm" @change="clearSearch">
+                                <span class="white-text">Fuzzy search</span>
+                            </label>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
 
     <div class="container">
 
 
         <div class="row">
-            <!--search algorithm selection-->
-            <label>
-                <input type="radio" id="fuzzy" value="fuzzy" v-model="algorithm">
-                <span>Fuzzy search</span>
-            </label>
-            <label>
-                <input type="radio" id="anagram" value="anagram" v-model="algorithm">
-                <span>Анаграммайзер(coming soon)</span>
-            </label>
-            <!--end search algorithm selection-->
-            <h1>{{message}}</h1>
 
-            <input class="col s12" value="" v-model="input" @input="search">
+            <h4>{{message}}</h4>
+
+            <input class="col s12" value="" v-model="input" @input="search" type="text">
 
 
-            <button class="btn waves-effect waves-light col s12" @click="search">Search</button>
-
+            <button class="btn waves-effect waves-light col s12 grey darken-1" @click="search">Search</button>
+            <br>
             <table v-if="results && results.length>0">
                 <thead>
                 <tr>
                     <th>RU</th>
-                    <th>UA</th>
+                    <th class="hide-on-med-and-down">UA</th>
                     <th>District</th>
-                    <th>Old name</th>
+                    <th class="hide-on-med-and-down">Old name</th>
                 </tr>
                 </thead>
 
                 <tbody>
                 <tr v-for="street in results">
-                    <td :title='street.score'><a :href='"https://maps.google.com/?q=Запорожье, "+street.ru'
-                                                 target="_blank">{{street.ru}}</a></td>
-                    <td>{{street.ua}}</td>
+                    <td :title='street.score ? street.score : street.ru'><a
+                            :href='"https://maps.google.com/?q=Запорожье, "+street.ru'
+                            target="_blank">{{street.ru}}</a></td>
+                    <td class="hide-on-med-and-down">{{street.ua}}</td>
                     <td>{{street.district}}</td>
-                    <td>{{street.old}}</td>
+                    <td class="hide-on-med-and-down">{{street.old}}</td>
                 </tr>
                 </tbody>
             </table>
-            <h1 v-else-if="results !== null">Нет совпадений :(</h1>
+            <template v-else-if="results !== null">
+                <div class="row">
+                    <div class="col s12" style="text-align: center;">
+                        <h5 class="col s12">No matches :(</h5>
+                    </div>
+                    <div class="col s12 grey-text lighten-1" style="text-align: center;">
+                        *used {{algorithm}}
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 </div>
@@ -74,18 +109,41 @@
     }
     return text;
   };
-
-  var app = new Vue({
+  const INITIAL_MESSAGE = 'Type letters...';
+  const EMPTY_INPUT_MESSAGE = 'Type letters... at least one';
+  new Vue({
     el: '#app',
     data: {
-      message: 'Введите буквы для поиска',
-      algorithm: 'fuzzy',
+      message: INITIAL_MESSAGE,
+      algorithm: 'anagram',
       input: '',
       streets: streets,
-      results: null,
+      results: null
+    },
+    created: function () {
+      if (localStorage.algorithm) {
+        this.algorithm = localStorage.algorithm;
+      }
     },
     methods: {
+      clearSearch: function () {
+        localStorage.algorithm = this.algorithm;
+        if (this.input) {
+          this.search();
+        }
+        else {
+          this.message = INITIAL_MESSAGE;
+          this.results = null;
+        }
+
+      },
       search: function () {
+        if (!this.input) {
+          this.message = EMPTY_INPUT_MESSAGE;
+          this.results = null;
+          return;
+        }
+        gtag('event', 'search', {'input': this.input});
         if (this.algorithm == 'fuzzy') {
           var options = {
             shouldSort: true,
@@ -103,14 +161,39 @@
           };
           var fuse = new Fuse(streets, options); // "list" is the item array
           var results = fuse.search(transliterate(this.input, true));
-          this.message = `Найдено - ${results.length}`
+          this.message = `Found - ${results.length}`
           this.results = results.map((res) => {
             res.item.score = res.score;
             return res.item
           });
         } else {
-          //TODO
-          this.results = [];
+          let results = JSON.parse(JSON.stringify(streets));
+          let input = transliterate(this.input.toLowerCase(), true).replace(/й/g, 'и');
+          results = results.map(one => {
+            one.search = one.ru.toLowerCase();
+            one.search = one.search.replace(' улица', '');
+            one.search = one.search.replace(' переулок', '');
+            one.search = one.search.replace(' площадь', '');
+            one.search = one.search.replace(' шоссе', '');
+            one.search = one.search.replace(' проспект', '');
+            one.search = one.search.replace(/й/g, 'и');
+            return one;
+          });
+          for (let i = 0; i < input.length; i++) {
+            results = results.filter(oneStreet => {
+              if (oneStreet.search.indexOf(input[i]) >= 0) {
+                return true;
+              }
+              else {
+                return false;
+              }
+            }).map(oneStreet => {
+              oneStreet.search = oneStreet.search.replace(input[i], '');
+              return oneStreet;
+            });
+          }
+          this.message = `Found - ${results.length}`
+          this.results = results;
         }
 
       },

@@ -1,4 +1,5 @@
-nav {
-    background-color: cornflowerblue;
-}
 
+nav input[type="radio"]:checked+span:after {
+    background-color: #fff;
+    border: #fff;
+}

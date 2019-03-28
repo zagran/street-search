@@ -1,3 +1,8 @@
 # Streets search
-- fuzzu search
-- anagramizer for streets(todo)
+- Fuzzy search
+- Anagramizer for streets(todo)
+
+# Deploy
+```sh
+scotty --spa --source ./ --bucket streets-tk
+```
