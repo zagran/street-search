@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Anagramizer</title>
+    <title>NearbySearch</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link rel="stylesheet" href="./style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
@@ -13,11 +13,15 @@
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-137018871-1"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+        window.dataLayer = window.dataLayer || [];
 
-      gtag('config', 'UA-137018871-1');
+        function gtag() {
+            dataLayer.push(arguments);
+        }
+
+        gtag('js', new Date());
+
+        gtag('config', 'UA-137018871-1');
     </script>
 
 </head>
@@ -29,20 +33,20 @@
 
 
                 <div class="row">
-                    <a href="#" class="brand-logo">ZP.Streets</a>
-                    <ul id="nav-mobile" class="right hide-on-med-and-down">
-                        <li>
-                            <label>
-                                <input class="white-text" type="radio" id="anagram" value="anagram" v-model="algorithm"
-                                       @change="clearSearch">
-                                <span class="white-text">Anagram</span>
-                            </label>
-                            <label>
-                                <input type="radio" id="fuzzy" value="fuzzy" v-model="algorithm" @change="clearSearch">
-                                <span class="white-text">Fuzzy search</span>
-                            </label>
-                        </li>
-                    </ul>
+                    <a href="#" class="brand-logo">Nearby.City</a>
+                    <!--                    <ul id="nav-mobile" class="right hide-on-med-and-down">-->
+                    <!--                        <li>-->
+                    <!--                            <label>-->
+                    <!--                                <input class="white-text" type="radio" id="anagram" value="anagram" v-model="algorithm"-->
+                    <!--                                       @change="clearSearch">-->
+                    <!--                                <span class="white-text">Anagram</span>-->
+                    <!--                            </label>-->
+                    <!--                            <label>-->
+                    <!--                                <input type="radio" id="fuzzy" value="fuzzy" v-model="algorithm" @change="clearSearch">-->
+                    <!--                                <span class="white-text">Fuzzy search</span>-->
+                    <!--                            </label>-->
+                    <!--                        </li>-->
+                    <!--                    </ul>-->
                 </div>
             </div>
         </div>
@@ -58,26 +62,24 @@
             <input class="col s12" value="" v-model="input" @input="search" type="text">
 
 
-            <button class="btn waves-effect waves-light col s12 grey darken-1" @click="search">Search</button>
+            <button class="btn waves-effect waves-light col s12 grey darken-1" @click="search">Поиск</button>
             <br>
             <table v-if="results && results.length>0">
                 <thead>
                 <tr>
-                    <th>RU</th>
-                    <th class="hide-on-med-and-down">UA</th>
-                    <th>District</th>
-                    <th class="hide-on-med-and-down">Old name</th>
+                    <th>Название</th>
+                    <!-- <th class="hide-on-med-and-down">Название</th>-->
+                    <th>Расстояние</th>
+                    <th>Маршрут</th>
                 </tr>
                 </thead>
 
                 <tbody>
-                <tr v-for="street in results">
-                    <td :title='street.score ? street.score : street.ru'><a
-                            :href='"https://maps.google.com/?q=Запорожье, "+street.ru'
-                            target="_blank">{{street.ru}}</a></td>
-                    <td class="hide-on-med-and-down">{{street.ua}}</td>
-                    <td>{{street.district}}</td>
-                    <td class="hide-on-med-and-down">{{street.old}}</td>
+                <tr v-for="city in results">
+                    <td>{{city.name}}</td>
+                    <!-- <td class="hide-on-med-and-down">{{city.name}}</td>-->
+                    <td>{{city.distance}}км</td>
+                    <td><a :href='"https://www.google.com/maps/dir/?api=1&origin="+lat+","+lng+"&destination="+city.lat+","+city.lng' target="_blank">GOOGLE</a></td>
                 </tr>
                 </tbody>
             </table>
@@ -97,109 +99,114 @@
 
 
 <script>
-
-  function transliterate(text, engToRus = false) {
-    var
-      rus = "щ   ш  ч  ц  ю  я  ё  ж  ъ  ы  э  а б в г д е з и й к л м н о п р с т у ф х ь".split(/ +/g),
-      eng = "shh sh ch cz yu ya yo zh `` y' e` a b v g d e z i j k l m n o p r s t u f x `".split(/ +/g);
-    var x;
-    for (x = 0; x < rus.length; x++) {
-      text = text.split(engToRus ? eng[x] : rus[x]).join(engToRus ? rus[x] : eng[x]);
-      text = text.split(engToRus ? eng[x].toUpperCase() : rus[x].toUpperCase()).join(engToRus ? rus[x].toUpperCase() : eng[x].toUpperCase());
+    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+        let R = 6371; // Radius of the earth in km
+        let dLat = deg2rad(lat2 - lat1);  // deg2rad below
+        let dLon = deg2rad(lon2 - lon1);
+        var a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        ;
+        let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        let d = R * c; // Distance in km
+        return d;
     }
-    return text;
-  };
-  const INITIAL_MESSAGE = 'Type letters...';
-  const EMPTY_INPUT_MESSAGE = 'Type letters... at least one';
-  new Vue({
-    el: '#app',
-    data: {
-      message: INITIAL_MESSAGE,
-      algorithm: 'anagram',
-      input: '',
-      streets: streets,
-      results: null
-    },
-    created: function () {
-      if (localStorage.algorithm) {
-        this.algorithm = localStorage.algorithm;
-      }
-    },
-    methods: {
-      clearSearch: function () {
-        localStorage.algorithm = this.algorithm;
-        if (this.input) {
-          this.search();
-        }
-        else {
-          this.message = INITIAL_MESSAGE;
-          this.results = null;
-        }
 
-      },
-      search: function () {
-        if (!this.input) {
-          this.message = EMPTY_INPUT_MESSAGE;
-          this.results = null;
-          return;
+    function deg2rad(deg) {
+        return deg * (Math.PI / 180)
+    }
+
+    function httpGet(theUrl) {
+        let xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("GET", theUrl, false); // false for synchronous request
+        xmlHttp.send(null);
+        return xmlHttp.responseText;
+    }
+
+    function transliterate(text, engToRus = false) {
+        let rus = "щ   ш  ч  ц  ю  я  ё  ж  ъ  ы  э  а б в г д е з и й к л м н о п р с т у ф х ь".split(/ +/g),
+            eng = "shh sh ch cz yu ya yo zh `` y' e` a b v g d e z i j k l m n o p r s t u f x `".split(/ +/g),
+            x;
+        for (x = 0; x < rus.length; x++) {
+            text = text.split(engToRus ? eng[x] : rus[x]).join(engToRus ? rus[x] : eng[x]);
+            text = text.split(engToRus ? eng[x].toUpperCase() : rus[x].toUpperCase()).join(engToRus ? rus[x].toUpperCase() : eng[x].toUpperCase());
         }
-        gtag('event', 'search', {'input': this.input});
-        if (this.algorithm == 'fuzzy') {
-          var options = {
-            shouldSort: true,
-            tokenize: true,
-            findAllMatches: true,
-            includeScore: true,
-            threshold: 0.4,
-            location: 5,
-            distance: 1000,
-            maxPatternLength: 32,
-            minMatchCharLength: 1,
-            keys: [
-              "ru"
-            ]
-          };
-          var fuse = new Fuse(streets, options); // "list" is the item array
-          var results = fuse.search(transliterate(this.input, true));
-          this.message = `Found - ${results.length}`
-          this.results = results.map((res) => {
-            res.item.score = res.score;
-            return res.item
-          });
-        } else {
-          let results = JSON.parse(JSON.stringify(streets));
-          let input = transliterate(this.input.toLowerCase(), true).replace(/й/g, 'и');
-          results = results.map(one => {
-            one.search = one.ru.toLowerCase();
-            one.search = one.search.replace(' улица', '');
-            one.search = one.search.replace(' переулок', '');
-            one.search = one.search.replace(' площадь', '');
-            one.search = one.search.replace(' шоссе', '');
-            one.search = one.search.replace(' проспект', '');
-            one.search = one.search.replace(/й/g, 'и');
-            return one;
-          });
-          for (let i = 0; i < input.length; i++) {
-            results = results.filter(oneStreet => {
-              if (oneStreet.search.indexOf(input[i]) >= 0) {
-                return true;
-              }
-              else {
-                return false;
-              }
-            }).map(oneStreet => {
-              oneStreet.search = oneStreet.search.replace(input[i], '');
-              return oneStreet;
+        return text;
+    };
+
+    const INITIAL_MESSAGE = 'Начните набирать...';
+    new Vue({
+        el: '#app',
+        data: {
+            message: INITIAL_MESSAGE,
+            algorithm: 'anagram',
+            input: '',
+            streets: streets,
+            results: null,
+            lat: null,
+            lng: null,
+        },
+        created: function () {
+            let that = this
+            navigator.geolocation.getCurrentPosition(function (position) {
+                that.lat = position.coords.latitude;
+                that.lng = position.coords.longitude;
+                let results = httpGet("https://g.autoquest.org.ua/geonames/findNearbyPlaceNameJSON?lat=" + that.lat + "&lng=" + that.lng + "&cities=cities1000&lang=ru&radius=50&maxRows=30&username=zagran");
+                let data = []
+                for (let item of JSON.parse(results)["geonames"]) {
+                    item.distance = getDistanceFromLatLonInKm(that.lat, that.lng, item.lat, item.lng).toFixed(2)
+                    data.push(item)
+                }
+                that.results = data
+
             });
-          }
-          this.message = `Found - ${results.length}`
-          this.results = results;
+        },
+        methods: {
+            clearSearch: function () {
+                localStorage.algorithm = this.algorithm;
+                if (this.input) {
+                    this.search();
+                } else {
+                    this.message = INITIAL_MESSAGE;
+                    this.results = null;
+                }
+
+            },
+            search: function () {
+                let that = this
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    that.lat = position.coords.latitude;
+                    that.lng = position.coords.longitude;
+                    let results = httpGet("https://g.autoquest.org.ua/geonames/findNearbyPlaceNameJSON?lat=" + that.lat + "&lng=" + that.lng + "&cities=cities1000&lang=ru&radius=80&maxRows=50&username=zagran");
+                    let data = []
+                    for (let item of JSON.parse(results)["geonames"]) {
+                        item.distance = getDistanceFromLatLonInKm(that.lat, that.lng, item.lat, item.lng).toFixed(2)
+                        item.search = item.name.toLowerCase();
+                        data.push(item)
+                    }
+                    let input = transliterate(that.input.toLowerCase(), true).replace(/й/g, 'и');
+
+                    for (let i = 0; i < input.length; i++) {
+                        data = data.filter(oneCity => {
+                            if (oneCity.search.indexOf(input[i]) >= 0) {
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        }).map(oneCity => {
+                            oneCity.search = oneCity.search.replace(input[i], '');
+                            return oneCity;
+                        });
+                    }
+
+                    that.results = data
+
+                });
+            },
+
         }
-
-      },
-
-    }
-  })
+    })
 </script>
 </body>
 </html>

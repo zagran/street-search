@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anagramizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.4.4/fuse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="./datasets/zp.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-137018871-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-137018871-1');
+    </script>
+
+</head>
+<body>
+<div id="app">
+    <nav>
+        <div class="nav-wrapper grey darken-3">
+            <div class="container">
+
+
+                <div class="row">
+                    <a href="#" class="brand-logo">ZP.Streets</a>
+                    <ul id="nav-mobile" class="right hide-on-med-and-down">
+                        <li>
+                            <label>
+                                <input class="white-text" type="radio" id="anagram" value="anagram" v-model="algorithm"
+                                       @change="clearSearch">
+                                <span class="white-text">Anagram</span>
+                            </label>
+                            <label>
+                                <input type="radio" id="fuzzy" value="fuzzy" v-model="algorithm" @change="clearSearch">
+                                <span class="white-text">Fuzzy search</span>
+                            </label>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+
+
+        <div class="row">
+
+            <h4>{{message}}</h4>
+
+            <input class="col s12" value="" v-model="input" @input="search" type="text">
+
+
+            <button class="btn waves-effect waves-light col s12 grey darken-1" @click="search">Search</button>
+            <br>
+            <table v-if="results && results.length>0">
+                <thead>
+                <tr>
+                    <th>RU</th>
+                    <th class="hide-on-med-and-down">UA</th>
+                    <th>District</th>
+                    <th class="hide-on-med-and-down">Old name</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr v-for="street in results">
+                    <td :title='street.score ? street.score : street.ru'><a
+                            :href='"https://maps.google.com/?q=Запорожье, "+street.ru'
+                            target="_blank">{{street.ru}}</a></td>
+                    <td class="hide-on-med-and-down">{{street.ua}}</td>
+                    <td>{{street.district}}</td>
+                    <td class="hide-on-med-and-down">{{street.old}}</td>
+                </tr>
+                </tbody>
+            </table>
+            <template v-else-if="results !== null">
+                <div class="row">
+                    <div class="col s12" style="text-align: center;">
+                        <h5 class="col s12">No matches :(</h5>
+                    </div>
+                    <div class="col s12 grey-text lighten-1" style="text-align: center;">
+                        *used {{algorithm}}
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+  function transliterate(text, engToRus = false) {
+    var
+      rus = "щ   ш  ч  ц  ю  я  ё  ж  ъ  ы  э  а б в г д е з и й к л м н о п р с т у ф х ь".split(/ +/g),
+      eng = "shh sh ch cz yu ya yo zh `` y' e` a b v g d e z i j k l m n o p r s t u f x `".split(/ +/g);
+    var x;
+    for (x = 0; x < rus.length; x++) {
+      text = text.split(engToRus ? eng[x] : rus[x]).join(engToRus ? rus[x] : eng[x]);
+      text = text.split(engToRus ? eng[x].toUpperCase() : rus[x].toUpperCase()).join(engToRus ? rus[x].toUpperCase() : eng[x].toUpperCase());
+    }
+    return text;
+  };
+  const INITIAL_MESSAGE = 'Type letters...';
+  const EMPTY_INPUT_MESSAGE = 'Type letters... at least one';
+  new Vue({
+    el: '#app',
+    data: {
+      message: INITIAL_MESSAGE,
+      algorithm: 'anagram',
+      input: '',
+      streets: streets,
+      results: null
+    },
+    created: function () {
+      if (localStorage.algorithm) {
+        this.algorithm = localStorage.algorithm;
+      }
+    },
+    methods: {
+      clearSearch: function () {
+        localStorage.algorithm = this.algorithm;
+        if (this.input) {
+          this.search();
+        }
+        else {
+          this.message = INITIAL_MESSAGE;
+          this.results = null;
+        }
+
+      },
+      search: function () {
+        if (!this.input) {
+          this.message = EMPTY_INPUT_MESSAGE;
+          this.results = null;
+          return;
+        }
+        gtag('event', 'search', {'input': this.input});
+        if (this.algorithm == 'fuzzy') {
+          var options = {
+            shouldSort: true,
+            tokenize: true,
+            findAllMatches: true,
+            includeScore: true,
+            threshold: 0.4,
+            location: 5,
+            distance: 1000,
+            maxPatternLength: 32,
+            minMatchCharLength: 1,
+            keys: [
+              "ru"
+            ]
+          };
+          var fuse = new Fuse(streets, options); // "list" is the item array
+          var results = fuse.search(transliterate(this.input, true));
+          this.message = `Found - ${results.length}`
+          this.results = results.map((res) => {
+            res.item.score = res.score;
+            return res.item
+          });
+        } else {
+          let results = JSON.parse(JSON.stringify(streets));
+          let input = transliterate(this.input.toLowerCase(), true).replace(/й/g, 'и');
+          results = results.map(one => {
+            one.search = one.ru.toLowerCase();
+            one.search = one.search.replace(' улица', '');
+            one.search = one.search.replace(' переулок', '');
+            one.search = one.search.replace(' площадь', '');
+            one.search = one.search.replace(' шоссе', '');
+            one.search = one.search.replace(' проспект', '');
+            one.search = one.search.replace(/й/g, 'и');
+            return one;
+          });
+          for (let i = 0; i < input.length; i++) {
+            results = results.filter(oneStreet => {
+              if (oneStreet.search.indexOf(input[i]) >= 0) {
+                return true;
+              }
+              else {
+                return false;
+              }
+            }).map(oneStreet => {
+              oneStreet.search = oneStreet.search.replace(input[i], '');
+              return oneStreet;
+            });
+          }
+          this.message = `Found - ${results.length}`
+          this.results = results;
+        }
+
+      },
+
+    }
+  })
+</script>
+</body>
+</html>
